@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optical RX Dashboard</title>
+    <style>
+        /* Clean Light Theme Colors */
+        :root {
+            --bg: #f3f4f6;
+            --panel: #ffffff;
+            --text: #1f2937;
+            --border: #e5e7eb;
+            --accent: #2563eb;
+            --success: #059669;
+            --danger: #dc2626;
+            --warning: #d97706;
+            --sys-text: #6b7280;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh; /* Lock to exact window height */
+            box-sizing: border-box;
+            overflow: hidden; /* Prevent body scrolling */
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-shrink: 0; /* Keep header from compressing */
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 15px;
+            transition: background-color 0.2s;
+        }
+        
+        #connectBtn { background-color: var(--success); }
+        #connectBtn:hover { background-color: #047857; }
+        
+        #disconnectBtn { background-color: var(--danger); display: none; }
+        #disconnectBtn:hover { background-color: #b91c1c; }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+            flex-grow: 1;
+            min-height: 0; /* Crucial for constraining grid */
+        }
+        
+        .panel {
+            background-color: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            min-height: 0; /* Fixes the stretching bug! Forces panel to stay within grid */
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            flex-shrink: 0;
+        }
+        
+        .stat-box {
+            background-color: var(--bg);
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .stat-label {
+            color: var(--sys-text);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 4px;
+        }
+        
+        .text-success { color: var(--success); }
+        .text-danger { color: var(--danger); }
+        .text-warning { color: var(--warning); }
+        .text-accent { color: var(--accent); }
+        
+        #terminal {
+            flex-grow: 1;
+            background-color: #f8fafc;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-y: auto; /* Allow inner scrolling */
+            min-height: 0; /* Fixes the stretching bug! */
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            border: 1px solid var(--border);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+        }
+        
+        .log-entry { margin-bottom: 4px; padding-bottom: 4px; border-bottom: 1px solid #f1f5f9; }
+        .log-msg { color: var(--success); font-weight: 500; }
+        .log-err { color: var(--danger); font-weight: 600; }
+        .log-sys { color: var(--sys-text); }
+        
+        .chart-wrapper {
+            margin-top: 15px;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            min-height: 0;
+        }
+
+        .chart-legend {
+            font-size: 12px; 
+            margin-bottom: 5px; 
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .chart-container {
+            flex-grow: 1;
+            min-height: 0; /* Allows canvas to shrink if needed */
+            background-color: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            position: relative;
+        }
+
+        .y-axis {
+            position: absolute;
+            left: 5px;
+            font-size: 10px;
+            color: #9ca3af;
+            font-weight: bold;
+        }
+        .y-axis.top { top: 5px; }
+        .y-axis.bottom { bottom: 5px; }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .chart-desc {
+            font-size: 11px;
+            color: var(--sys-text);
+            margin-top: 8px;
+            line-height: 1.4;
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2 style="margin: 0; color: #111827;">Optical RX Telemetry Dashboard</h2>
+        <div class="btn-group">
+            <button id="connectBtn">Connect to RX Arduino</button>
+            <button id="disconnectBtn">Disconnect</button>
+        </div>
+    </div>
+
+    <div class="grid">
+        <!-- Left Column: Live Stats & Chart -->
+        <div class="panel">
+            <h3 style="margin-top:0; color: #374151;">Link Statistics</h3>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-label">TOTAL VALID</div>
+                    <div class="stat-value text-success" id="valValid">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">VALID (LAST 10s)</div>
+                    <div class="stat-value text-success" id="valValid10s">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">CHECKSUM ERRORS</div>
+                    <div class="stat-value text-warning" id="valErrors">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">TOTAL LOST</div>
+                    <div class="stat-value text-danger" id="valLost">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">LOST (LAST 10s)</div>
+                    <div class="stat-value text-danger" id="valLost10s">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">AMBIENT MIDPOINT</div>
+                    <div class="stat-value text-accent" id="valMid">--</div>
+                </div>
+            </div>
+
+            <div class="chart-wrapper">
+                <h3 style="margin-top:20px; margin-bottom: 5px; color: #374151;">Ambient Light Tracker</h3>
+                <div class="chart-legend">
+                    <div>
+                        <span style="color: #dc2626">Max (High)</span> | 
+                        <span style="color: #2563eb">Midpoint</span> | 
+                        <span style="color: #6b7280">Min (Low)</span>
+                    </div>
+                    <span style="color: #6b7280">Scale: 0-1023</span>
+                </div>
+                
+                <div class="chart-container">
+                    <div class="y-axis top">1023</div>
+                    <div class="y-axis bottom">0</div>
+                    <canvas id="lightChart"></canvas>
+                </div>
+                
+                <div class="chart-desc">
+                    <strong>How it works:</strong> The receiver tracks raw analog pin voltage. Max and Min lines wrap around the physical brightness of the room/LED. The Blue Midpoint line automatically calculates the perfect threshold to differentiate a 1 from a 0.
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Terminal -->
+        <div class="panel">
+            <h3 style="margin-top:0; margin-bottom:15px; color: #374151;">Live Data Stream</h3>
+            <div id="terminal"></div>
+        </div>
+    </div>
+
+    <script>
+        // --- Web Serial State ---
+        let port;
+        let reader;
+        let keepReading = false;
+        let closedPromise;
+
+        // --- Data Variables ---
+        let validCount = 0;
+        let errorCount = 0;
+        let lostCount = 0;
+        let highestId = 0;
+        
+        // --- 10s Rolling Trackers ---
+        let recentValid = []; 
+        let recentLost = [];  
+
+        // --- Chart History ---
+        const historyMax = [], historyMid = [], historyMin = [];
+        const maxPoints = 100;
+
+        // --- DOM Elements ---
+        const terminal = document.getElementById('terminal');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const canvas = document.getElementById('lightChart');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+            drawChart();
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function logToTerminal(html) {
+            const div = document.createElement('div');
+            div.className = 'log-entry';
+            
+            const now = new Date();
+            const timeStr = `<span style="color:#94a3b8; font-size: 12px; margin-right: 8px;">[${now.toLocaleTimeString()}]</span>`;
+            
+            div.innerHTML = timeStr + html;
+            terminal.prepend(div);
+            
+            if (terminal.children.length > 200) {
+                terminal.removeChild(terminal.lastChild);
+            }
+        }
+
+        setInterval(() => {
+            const now = Date.now();
+            const cutoff = now - 10000; 
+
+            recentValid = recentValid.filter(t => t > cutoff);
+            recentLost = recentLost.filter(p => p.time > cutoff);
+
+            const valid10s = recentValid.length;
+            const lost10s = recentLost.reduce((sum, p) => sum + p.amount, 0);
+
+            document.getElementById('valValid10s').innerText = valid10s;
+            document.getElementById('valLost10s').innerText = lost10s;
+        }, 500); 
+
+        function updateChartData(min, mid, max) {
+            document.getElementById('valMid').innerText = mid;
+            historyMin.push(min);
+            historyMid.push(mid);
+            historyMax.push(max);
+            
+            if (historyMin.length > maxPoints) {
+                historyMin.shift();
+                historyMid.shift();
+                historyMax.shift();
+            }
+            drawChart();
+        }
+
+        function drawChart() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (historyMid.length === 0) return;
+
+            const step = canvas.width / (maxPoints - 1);
+            
+            const drawLine = (data, color) => {
+                ctx.beginPath();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2.5; 
+                
+                for (let i = 0; i < data.length; i++) {
+                    const x = i * step;
+                    const y = canvas.height - ((data[i] / 1023) * canvas.height);
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+            };
+
+            drawLine(historyMax, '#dc2626'); 
+            drawLine(historyMid, '#2563eb'); 
+            drawLine(historyMin, '#9ca3af'); 
+        }
+
+        connectBtn.addEventListener('click', async () => {
+            try {
+                port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 115200 });
+                
+                connectBtn.style.display = 'none';
+                disconnectBtn.style.display = 'inline-block';
+                logToTerminal('<span class="log-sys">System initialized. Listening to serial port...</span>');
+
+                keepReading = true;
+                readLoop(); 
+            } catch (error) {
+                logToTerminal(`<span class="log-err">Connection failed: ${error}</span>`);
+            }
+        });
+
+        disconnectBtn.addEventListener('click', async () => {
+            keepReading = false;
+            
+            if (reader) {
+                await reader.cancel(); 
+            }
+            
+            connectBtn.style.display = 'inline-block';
+            disconnectBtn.style.display = 'none';
+            logToTerminal('<span class="log-sys">Disconnected from Arduino successfully.</span>');
+        });
+
+        async function readLoop() {
+            while (port.readable && keepReading) {
+                const textDecoder = new TextDecoderStream();
+                closedPromise = port.readable.pipeTo(textDecoder.writable);
+                reader = textDecoder.readable.getReader();
+
+                try {
+                    let buffer = "";
+                    while (true) {
+                        const { value, done } = await reader.read();
+                        if (done) break;
+                        
+                        buffer += value;
+                        let lines = buffer.split('\n');
+                        buffer = lines.pop(); 
+
+                        for (let line of lines) {
+                            line = line.trim();
+                            if (!line) continue;
+                            
+                            try {
+                                const data = JSON.parse(line);
+                                
+                                if (data.min !== undefined && data.max !== undefined && data.mid !== undefined) {
+                                    updateChartData(data.min, data.mid, data.max);
+                                }
+
+                                if (data.status === "ok") {
+                                    validCount++;
+                                    recentValid.push(Date.now()); 
+                                    
+                                    document.getElementById('valValid').innerText = validCount;
+                                    logToTerminal(`<span class="log-msg">✔ ${data.msg}</span>`);
+                                    
+                                    const match = data.msg.match(/Msg ID \[(\d+)\]/);
+                                    if (match) {
+                                        const currentId = parseInt(match[1]);
+                                        if (highestId === 0) {
+                                            highestId = currentId; 
+                                        } else if (currentId > highestId + 1) {
+                                            const missing = currentId - highestId - 1;
+                                            lostCount += missing;
+                                            recentLost.push({ time: Date.now(), amount: missing }); 
+                                            
+                                            document.getElementById('valLost').innerText = lostCount;
+                                            logToTerminal(`<span class="log-err">⚠ Detected ID jump! Lost ${missing} packages in transit.</span>`);
+                                            highestId = currentId;
+                                        } else {
+                                            highestId = currentId;
+                                        }
+                                    }
+                                } 
+                                else if (data.status === "error") {
+                                    errorCount++;
+                                    document.getElementById('valErrors').innerText = errorCount;
+                                    logToTerminal(`<span class="log-warning" style="color: #d97706; font-weight: bold;">✖ [CORRUPT FRAME] Checksum failed. Packet dropped.</span>`);
+                                }
+                                else if (data.status === "boot") {
+                                    logToTerminal(`<span class="log-sys">Arduino Hardware Boot Sequence Detected.</span>`);
+                                }
+
+                            } catch (e) {
+                                logToTerminal(`<span class="log-sys">${line}</span>`);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    // Ignore abort errors during disconnect
+                } finally {
+                    reader.releaseLock();
+                }
+            }
+            
+            if (port) {
+                await port.close();
+            }
+        }
+    </script>
+</body>
+</html>
