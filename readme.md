@@ -128,9 +128,9 @@ A standalone web application. Because it uses the **Web Serial API**, you do not
 
 
 
-# 🗣️ The BlaBla Section
+## 🗣️ The BlaBla Section
 
-## 🔭 Vision
+### 🔭 Vision
 
 The goal is to build an accessible, fully open-source Free Space Optics (FSO) stack designed for developers, researchers, and (underwater) technology. High speed, secure optical communication shouldn't require thousands of €€€ of proprietary hardware and software.
 
@@ -142,13 +142,13 @@ Core pillars:
 
 ---
 
-## 📍 Current State
+### 📍 Current State
 
 The LumiComm project is currently in its starting phase. What you see in this repository is a working **Proof of Concept** that successfully demonstrates the core software and physics required for a reliable optical data link. This gets you started and gives you first resutls but also shows where current limitations are.
 
 ---
 
-## 🚀 Progress
+### 🚀 Progress
 
 The core of the current progress is based on standard Arduino boards (UNO/Mega) together with a reverse-biased photodiode. This setup is a first test and development platform.
 
@@ -158,6 +158,6 @@ Later hardware might include:
 * **High-Power TX Drivers:** Designing robust, high power LED driver circuits to punch through ambient noise and murky water, improving the signal-to-noise ratio.
 
 
-## 🗣️ Shoutout
+### 🗣️ Shoutout
 
 Parts of this project have been and will be developed at [GEOMAR](https://www.geomar.de/). Thanks!
