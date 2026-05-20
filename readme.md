@@ -29,7 +29,9 @@ Also it's an interesting piece of technology and quite easy to get reliable resu
 
 ## 🛠️ Hardware Requirements
 
-![RX and TX Setup](/lumicomm/documentation/images/RX_TX_setup.JPG)
+![RX and TX Setup](/documentation/images/RX_TX_setup.JPG)
+
+
 **Transmitter (TX):**
 
 * **Arduino** UNO R3 (or Nano/Mega)
@@ -55,9 +57,11 @@ Also it's an interesting piece of technology and quite easy to get reliable resu
 * Connect the **BPW34 Anode** (side with the line/notch) to Arduino Analog Pin **A0**.
 * Connect a **70kΩ Resistor** between **A0** and **GND**.
 
-> **Note on the Resistor:** A 100kΩ resistor provides a massive voltage swing for great sensitivity but severely limits the speed due to the RC time constant. To hit 4800 baud (the current realistic MAX), you must use a 70kΩ (or lower) resistor. This reduces the peak voltage swing, but accelerates the discharge time, allowing the system to catch faster optical edges. In short: higher resistors equal longer range; lower resistors equal higher speed but less sensitivity. 
+> [!Note]
+>
+> A 100kΩ resistor provides a massive voltage swing for great sensitivity but severely limits the speed due to the RC time constant. To hit 4800 baud (the current realistic MAX), you must use a 70kΩ (or lower) resistor. This reduces the peak voltage swing, but accelerates the discharge time, allowing the system to catch faster optical edges. In short: higher resistors equal longer range; lower resistors equal higher speed but less sensitivity. 
 
-![Receiver Setup](/lumicomm/documentation/images/receiver.JPG)
+![Receiver Setup](/documentation/images/receiver.JPG)
 
 
 ---
@@ -82,7 +86,7 @@ Point the **TX LED** directly at the **RX Photodiode** with 5-50cm distance betw
 4. Select your Arduino's COM port from the browser popup.
 5. Watch the data stream in!
 
-![RX and TX Setup](/lumicomm/documentation/images/interface.JPG)
+![RX and TX Setup](/documentation/images/interface.JPG)
 
 
 ---
